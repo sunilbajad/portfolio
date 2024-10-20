@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Chatbot</title>
+    <!-- Include Axios via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .chat-box {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            height: 500px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: none;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-size: 18px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            position: relative;
+            /* Added for positioning the close button */
+        }
+
+        .chat-body {
+            padding: 10px;
+            height: 400px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .chat-footer {
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-footer input {
+            flex-grow: 1;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .chat-footer button {
+            padding: 5px 10px;
+        }
+
+        .user-message {
+            text-align: left;
+            margin: 10px 0;
+        }
+
+        .bot-message {
+            text-align: right;
+            margin: 10px 0;
+        }
+
+        .message {
+            padding: 8px 12px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+
+        .user-message .message {
+            background-color: #f1f1f1;
+        }
+
+        .bot-message .message {
+            background-color: #007bff;
+            color: white;
+        }
+
+        /* Loading spinner */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: #007bff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Close button styling */
+        .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Chatbot Button -->
+    <button id="openChatBtn" class="btn btn-primary" style="position: fixed; bottom: 20px; right: 20px;">
+        Open Chatbot
+    </button>
+
+    <!-- Chatbot Modal/Box -->
+    <div class="chat-box" id="chatBox">
+        <div class="chat-header">
+            Chatbot
+            <button class="close-btn" id="closeChatBtn">&times;</button> <!-- Close button -->
+        </div>
+        <div class="chat-body" id="chatBody">
+            <!-- Greeting message and conversation will be shown here -->
+        </div>
+        <div class="chat-footer">
+            <input type="text" id="userInput" placeholder="Type your question..." />
+            <button id="sendBtn" class="btn btn-primary">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // Get references to elements
+        const openChatBtn = document.getElementById('openChatBtn');
+        const chatBox = document.getElementById('chatBox');
+        const chatBody = document.getElementById('chatBody');
+        const sendBtn = document.getElementById('sendBtn');
+        const userInput = document.getElementById('userInput');
+        const closeChatBtn = document.getElementById('closeChatBtn');
+
+        let loadingElement = null;
+
+        // Show the chat box and display greeting message
+        openChatBtn.addEventListener('click', () => {
+            chatBox.style.display = 'flex';
+            chatBody.innerHTML += `<div class="bot-message"><div class="message">Hello! How can I assist you today?</div></div>`;
+        });
+
+        // Close the chat box
+        closeChatBtn.addEventListener('click', () => {
+            chatBox.style.display = 'none';
+        });
+
+        // Function to handle sending a message
+        sendBtn.addEventListener('click', () => {
+            const userMessage = userInput.value.trim();
+            if (userMessage) {
+                appendUserMessage(userMessage);
+                showLoading(); // Show loading animation
+                callApi(userMessage);
+                userInput.value = ''; // Clear input field after sending
+            }
+        });
+
+        // Function to append the user's message to the chat body
+        function appendUserMessage(message) {
+            chatBody.innerHTML += `<div class="user-message"><div class="message">${message}</div></div>`;
+            chatBody.scrollTop = chatBody.scrollHeight; // Scroll to the bottom
+        }
+
+        // Function to append the bot's message to the chat body
+        function appendBotMessage(message) {
+            hideLoading(); // Hide loading animation
+            chatBody.innerHTML += `<div class="bot-message"><div class="message">${message}</div></div>`;
+            chatBody.scrollTop = chatBody.scrollHeight; // Scroll to the bottom
+        }
+
+        // Function to make the API call and extract aiResponse
+        function callApi(query) {
+            let data = JSON.stringify({
+                "query": query
+            });
+
+            let config = {
+                method: 'post',
+                maxBodyLength: Infinity,
+                url: 'https://node-gemini-sunil.vercel.app/find-similar',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                data: data
+            };
+
+            axios.request(config)
+                .then((response) => {
+                    const aiResponse = response.data.aiResponse || "No response found.";
+                    appendBotMessage(aiResponse);
+                })
+                .catch((error) => {
+                    appendBotMessage(`Error fetching response: ${error}`);
+                });
+        }
+
+        // Function to show loading animation
+        function showLoading() {
+            loadingElement = document.createElement('div');
+            loadingElement.className = 'bot-message';
+            loadingElement.innerHTML = `<div class="message"><div class="loading"></div></div>`;
+            chatBody.appendChild(loadingElement);
+            chatBody.scrollTop = chatBody.scrollHeight; // Scroll to the bottom
+        }
+
+        // Function to hide loading animation
+        function hideLoading() {
+            if (loadingElement) {
+                loadingElement.remove();
+                loadingElement = null;
+            }
+        }
+    </script>
+
+</body>
+
+</html>
